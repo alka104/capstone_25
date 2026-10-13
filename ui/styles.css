@@ -1,0 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap');
+html, body, [class*="css"] { font-family: 'Manrope', sans-serif; }
+.block-container { padding-top: 1.2rem; max-width: 1500px; }
+.brand { font-weight: 800; font-size: 1.5rem; color: #14352F; }
+.brand span { color: #F26A45; }
+.eyebrow { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #7a8a85; font-weight: 600; }
+.pill { display:inline-block; padding:.15rem .6rem; border-radius:999px; font-size:.72rem; font-weight:700; }
+.pill-model { background:#DCEFE8; color:#1D5C52; }
+.pill-warn  { background:#FDECCB; color:#8a5a00; }
+.pill-high  { background:#FBDDD3; color:#B23A1B; }
+.card { background:#fff; border:1px solid #E6E8DF; border-radius:14px; padding:.9rem 1rem; margin-bottom:.7rem; }
+.bigtemp { font-size:2.6rem; font-weight:800; color:#14352F; line-height:1; }
+div.stButton > button[kind="primary"] { background:#F26A45; border:0; font-weight:700; }
