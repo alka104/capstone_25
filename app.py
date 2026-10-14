@@ -53,6 +53,22 @@ def mt(p: Path) -> float:
     return p.stat().st_mtime
 
 
+# Styling for the Leaflet map itself. The map lives in an iframe, so ui/styles.css cannot reach it.
+MAP_CSS = """<style>
+  .leaflet-container { background:#0B1D21; font-family: 'Manrope', system-ui, sans-serif; }
+  .legend.leaflet-control { background:rgba(11,29,33,.78); border:1px solid rgba(94,234,212,.25);
+                            border-radius:10px; padding:2px 8px 0; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+  .legend.leaflet-control text { fill:#E6F1ED !important; font-size:11px; font-weight:600; }
+  .legend.leaflet-control .tick line, .legend.leaflet-control .domain { stroke:#8DA9A2 !important; }
+  .leaflet-control-zoom a { background:#12302F; color:#E6F1ED; border-color:#245553; }
+  .leaflet-control-zoom a:hover { background:#1B4A47; color:#fff; }
+  .leaflet-control-layers-expanded { background:#10292D; color:#E6F1ED; border:1px solid #245553; border-radius:12px; }
+  .leaflet-control-scale-line { background:rgba(11,29,33,.8); color:#E6F1ED; border-color:#8DA9A2; }
+  .leaflet-control-attribution { background:rgba(11,29,33,.75) !important; color:#8DA9A2 !important; }
+  .leaflet-control-attribution a { color:#5EEAD4 !important; }
+</style>"""
+
+
 def polygon_area_km2(geojson: dict) -> float:
     geom = shp_transform(be._to_grid.transform, shape(geojson))
     return geom.area / 1e6
@@ -211,9 +227,13 @@ with mid:
 
     # ---- base map: identical between reruns, otherwise the browser rebuilds it (= flicker)
     m = folium.Map(location=ss.map_center, zoom_start=12, tiles=None, control_scale=True)
+    m.get_root().header.add_child(folium.Element(MAP_CSS))
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        attr="Tiles &copy; Esri", name="Dark map", max_zoom=16).add_to(m)
     folium.TileLayer(
         tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-        attr="Tiles &copy; Esri", name="Light map", max_zoom=16).add_to(m)
+        attr="Tiles &copy; Esri", name="Light map", max_zoom=16, show=False).add_to(m)
     folium.TileLayer(tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                      attr="&copy; OpenStreetMap contributors", name="Street (OSM)", show=False).add_to(m)
     folium.TileLayer(
@@ -221,9 +241,10 @@ with mid:
         attr="Tiles &copy; Esri", name="Satellite", show=False).add_to(m)
     rgba, bounds = cached_overlay(str(path), mt(path), vmin, vmax, cmap)
     folium.raster_layers.ImageOverlay(rgba, bounds=bounds, opacity=0.8, name=layer).add_to(m)
-    cm = LinearColormap(["#1a9850", "#fee08b", "#d73027"] if cmap == "RdYlGn_r" else
-                        ["#2166ac", "#f7f7f7", "#b2182b"] if "Bu" in cmap and sym else
-                        ["#2c7bb6", "#ffffbf", "#d7191c"], vmin=vmin, vmax=vmax,
+    _legend_colors = {"RdYlGn_r": ["#1a9850", "#fee08b", "#d73027"],     # forecast / scenario LST
+                      "RdYlBu_r": ["#4575b4", "#ffffbf", "#d73027"],     # forecast UHI
+                      "RdBu_r":   ["#35C2F0", "#2A4048", "#FF6A45"]}     # dLST (dark-centred, see raster_io)
+    cm = LinearColormap(_legend_colors[cmap], vmin=vmin, vmax=vmax,
                         caption=("ΔT (°C), centred on 0" if sym else "°C"))
     cm.add_to(m)
     if mode == "Draw area":  # drawing tools only exist in draw mode, so draw clicks never move the point

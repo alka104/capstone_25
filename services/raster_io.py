@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from matplotlib import colormaps
+from matplotlib.colors import LinearSegmentedColormap
 from pyproj import Transformer
 from rasterio.features import geometry_mask
 from rasterio.warp import Resampling, calculate_default_transform, reproject
@@ -34,6 +35,11 @@ def value_range(path: Path, symmetric: bool = False) -> tuple[float, float]:
     return float(np.percentile(a, 2)), float(np.percentile(a, 98))
 
 
+# On the dark UI the zero-change colour must be dark (not white): cooling = cyan, warming = ember.
+_DELTA_DARK = LinearSegmentedColormap.from_list(
+    "delta_dark", ["#35C2F0", "#2A7FA8", "#2A4048", "#B8472F", "#FF6A45"])
+
+
 def overlay(path: Path, vmin: float, vmax: float, cmap: str = "RdYlGn_r"):
     """-> (rgba uint8 array, [[south, west], [north, east]]) in EPSG:4326, cropped to valid pixels."""
     with rasterio.open(path) as src:
@@ -49,7 +55,8 @@ def overlay(path: Path, vmin: float, vmax: float, cmap: str = "RdYlGn_r"):
     r0, r1, c0, c1 = rows.min(), rows.max(), cols.min(), cols.max()
     crop = dst[r0:r1 + 1, c0:c1 + 1]
     norm = np.clip((crop - vmin) / max(vmax - vmin, 1e-9), 0, 1)
-    rgba = (colormaps[cmap](norm) * 255).astype("uint8")
+    cm = _DELTA_DARK if cmap == "RdBu_r" else colormaps[cmap]  # RdBu_r is only used for dLST
+    rgba = (cm(norm) * 255).astype("uint8")
     rgba[..., 3] = np.where(np.isfinite(crop), 215, 0)
     west, north = tf.c + c0 * tf.a, tf.f + r0 * tf.e
     east, south = tf.c + (c1 + 1) * tf.a, tf.f + (r1 + 1) * tf.e
